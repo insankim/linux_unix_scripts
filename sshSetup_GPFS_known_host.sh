@@ -9,7 +9,7 @@ for host in $HOSTS
 		done
 		
 		
-#crate ssh-keygen on all hosts
+#create ssh-keygen on all hosts
 # ** Distruptive process, does not continue when identity files already exist **
 ssh-keygen -t rsa -f $HOME/.ssh/$(hostname) -N ''
 for host in $HOSTS

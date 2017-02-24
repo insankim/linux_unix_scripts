@@ -180,7 +180,7 @@ else
 	exit 1
 fi
 
-#crate ssh-keygen on all hosts
+#create ssh-keygen on all hosts
 # ** Distruptive process, does not continue when identity files already exist **
 ssh-keygen -t rsa -f $HOME/.ssh/$(hostname) -N ''
 for host in $HOSTS
@@ -197,9 +197,14 @@ do
 	done
 	
 
-	# Update 'authorized_keys' entries on all hosts
+# Update 'authorized_keys' entries on all hosts
 for host in $HOSTS
 do
 	$SSH -o StrictHostKeyChecking=no -x -l $USR $host "/bin/sh -c \" cat .ssh/${IDENTITY}.pub* >> .ssh/authorized_keys"
 done
 
+# Restore backup .ssh configuration
+for host in $HOSTS
+do
+	$SSH -o StrictHostKeyChecking=no -x -l $USR $host "/bin/sh -c \" cat .ssh/known_hosts.tmp >> .ssh/known_hosts; cat .ssh/authorized_keys.tmp >> .ssh/authorized_keys\""
+done
