@@ -2,6 +2,8 @@
 
 ### Inspired by Oracle RAC Script ##
 
+### 정확한 argument 넣지 않았을 때의 예외 처리에 대해 생각해보기 ###
+
 # Command line arguments
 numargs=$#
 HOSTNAME=$(hostname)
@@ -19,6 +21,12 @@ IDENTITY=id_rsa
 #Date Usage - 'date + Format' 
 LOGFILE=$TEMP/gpfsSshSetup_$(date +%F-%H-%M-%S).log
 
+# Exit when no arguments
+if test -z $1
+then
+echo "-user <user name> -hosts \"<space separated hostlist>\" |  [-help]"
+exit 1
+fi
 
 while [ $i -le $numargs ]
 do
@@ -40,8 +48,10 @@ do
 	then
 		HELP=true
 	fi
-i=`expr $i + 1`
-shift 1
+
+	
+	i=`expr $i + 1`
+	shift 1
 #else
 #echo Wrong Syntax, use -help argument to read the usage.
 #exit 1	
@@ -51,6 +61,8 @@ shift 1
 #	fi
 done
 
+
+
 if [ $HELP = "true" ]
 then
 	echo "Usage $0 -user <user name> [ -hosts \"<space separated hostlist>\" [-help]"
@@ -58,15 +70,11 @@ exit 1
 fi
 
 
-#if test -z $1
-#then
-#echo "-user <user name> [ -hosts \"<space separated hostlist>\" |  [-help]"
-#exit 1
-#fi
+
 
 
 # Paths for ssh, scp, ssh-keygen excutables
-SSH="/bin/ssh"
+SSH="/bin/usr/ssh"
 SCP="/usr/bin/scp"
 SSH_KEYGEN="/usr/bin/ssh-keygen"
 determineOS()
@@ -151,18 +159,16 @@ else
 fi
 
 
-
-ssh-keygen -t rsa -f $HOME/.ssh/$(hostname) -N ''
 for host in $HOSTS
 do
-	$SSH -o StrictHostKeyChecking=no -x -l $USR $host "/bin/sh -c \" ssh-keygen -t rsa -f .ssh/$host -N '';	mkdir -p .ssh ; chmod og-w . .ssh;   touch .ssh/authorized_keys .ssh/known_hosts;  chmod 644 .ssh/authorized_keys  .ssh/known_hosts; cp  .ssh/authorized_keys .ssh/authorized_keys.tmp ;  cp .ssh/known_hosts .ssh/known_hosts.tmp; echo \\"Host *\\" > .ssh/config.tmp; echo \\"ForwardX11 no\\" >> .ssh/config.tmp; if test -f  .ssh/config ; then cp -f .ssh/config .ssh/config.backup; fi ; mv -f .ssh/config.tmp .ssh/config\""
+	$SSH -o StrictHostKeyChecking=no -x -l $USR $host "/bin/sh -c \" mkdir -p .ssh ; chmod og-w . .ssh;   touch .ssh/authorized_keys .ssh/known_hosts .ssh/config;  chmod 644 .ssh/authorized_keys  .ssh/known_hosts .ssh/config; cp  .ssh/authorized_keys .ssh/authorized_keys.tmp ;  cp .ssh/known_hosts .ssh/known_hosts.tmp; echo \"Host *\" > .ssh/config.tmp; echo \"ForwardX11 no\" >> .ssh/config.tmp; if test -f  .ssh/config ; then cp -f .ssh/config .ssh/config.backup; fi ; mv -f .ssh/config.tmp .ssh/config\""
 done
 
 #create ssh-keygen on all hosts
 for host in $HOSTS
 do
-	$SSH -o StrictHostKeyChecking=no -x -l $USR $host "/bin/sh -c \" ssh-keygen -t rsa -f .ssh/$host -N \""
-	
+	$SSH -o StrictHostKeyChecking=no -x -l $USR $host "/bin/sh -c \" ssh-keygen -t rsa -f .ssh/${IDENTITY} -N '' \""
+done
 	
 # Sending key files among hosts
 for targethost in $HOSTS
@@ -171,7 +177,7 @@ do
 	do
 		scp $USR@$targethost:.ssh/${IDENTITY}.pub $USR@$remotehost:.ssh/${IDENTITY}.pub.$targethost
 	done
-	
+done	
 
 # Update 'authorized_keys' entries on all hosts
 for host in $HOSTS
@@ -182,7 +188,8 @@ done
 # Restore backup .ssh configuration
 for host in $HOSTS
 do
-	$SSH -o StrictHostKeyChecking=no -x -l $USR $host "/bin/sh -c \" cat .ssh/known_hosts.tmp >> .ssh/known_hosts; cat .ssh/authorized_keys.tmp >> .ssh/authorized_keys\""
+	$SSH -o StrictHostKeyChecking=no -x -l $USR $host "/bin/sh -c \" cat .ssh/known_hosts.tmp >> .ssh/known_hosts; cat .ssh/authorized_keys.tmp >> .ssh/authorized_keys; rm -f .ssh/authorized_keys.tmp .ssh/known_hosts.tmp\""
 done
-
+echo ************************************
 echo SSH Setup has successfully finished.
+echo ************************************
